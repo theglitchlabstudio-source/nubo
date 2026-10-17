@@ -27,17 +27,20 @@ export function isValidMobile(input: string): boolean {
   return /^09\d{9}$/.test(normalizeMobile(input));
 }
 
+// Unicode isolates keep the digit groups in left-to-right order inside RTL text.
+const ltr = (s: string) => `\u2066${s}\u2069`;
+
 /** «۰۹۱۲ ۳۴۵ ۶۷۸۹» */
 export function fmtMobile(m: string): string {
   const s = normalizeMobile(m);
-  if (s.length !== 11) return toFa(s);
-  return toFa(`${s.slice(0, 4)} ${s.slice(4, 7)} ${s.slice(7)}`);
+  if (s.length !== 11) return ltr(toFa(s));
+  return ltr(toFa(`${s.slice(0, 4)} ${s.slice(4, 7)} ${s.slice(7)}`));
 }
 
 /** «۰۹۱۲ ••• ۶۷۸۹» for public pages. */
 export function maskMobile(m: string): string {
   const s = normalizeMobile(m);
-  return toFa(`${s.slice(0, 4)} ••• ${s.slice(7)}`);
+  return ltr(toFa(`${s.slice(0, 4)} ••• ${s.slice(7)}`));
 }
 
 export function telLink(m: string): string {

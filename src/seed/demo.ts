@@ -27,7 +27,7 @@ import { customerMessage } from '@/services/notifications';
 
 export const STAFF_COLORS = ['#E8643C', '#7BA88E', '#86ACD8', '#D99AAE', '#E2B93B', '#A6A5DA', '#5E8C9A'];
 
-export const DEMO_PINS = { owner: '1111', secretary: '2222', super_admin: '0000' };
+export const DEMO_PINS = { owner: '1111', secretary: '2222', super_admin: '1234' };
 
 export interface TenantData {
   tenant: Tenant;
@@ -472,7 +472,8 @@ export async function buildDemoData(now: number): Promise<{ tenants: TenantData[
     const tpl = templateFor(spec.type);
     base.tenant.internalNotes = 'مشتری دمو — برای نمایش به مشتریان بالقوه';
     // Simulated outbox: requests + recent confirmations.
-    const recent = base.bookings.filter((b) => Date.parse(b.statusChangedAt) > now - 3 * DAY && b.status !== 'completed').slice(-8);
+    const changed = base.bookings.filter((b) => Date.parse(b.statusChangedAt) > now - 3 * DAY && b.status !== 'completed');
+    const recent = [...changed.filter((b) => b.status === 'pending'), ...changed.filter((b) => b.status !== 'pending').slice(-6)];
     base.notifications = recent.map((b, i) => ({
       id: `${spec.id}-nt${i}`,
       tenantId: spec.id,
@@ -491,6 +492,14 @@ export async function buildDemoData(now: number): Promise<{ tenants: TenantData[
     base.audit = [
       { id: `${spec.id}-au0`, tenantId: spec.id, actorName: 'GlitchLab', actorRole: 'super_admin', action: 'tenant.create', summary: `ایجاد کسب‌وکار از قالب «${tpl.name}»`, at: base.tenant.createdAt },
     ];
+    // Recent activity so the demo feed looks alive.
+    const recentlyCreated = base.bookings.filter((b) => Date.parse(b.createdAt) > now - 2 * DAY).sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(-10);
+    recentlyCreated.forEach((b, i) => {
+      base.audit.push({ id: `${spec.id}-aur${i}`, tenantId: spec.id, actorName: b.customerName, actorRole: 'customer', action: 'booking.request', entityId: b.id, summary: `درخواست نوبت «${b.serviceName}»`, at: b.createdAt });
+      if (b.status === 'confirmed' && spec.type !== 'barbershop' && spec.type !== 'gym') {
+        base.audit.push({ id: `${spec.id}-auc${i}`, tenantId: spec.id, actorName: spec.secretary, actorRole: 'secretary', action: 'booking.confirmed', entityId: b.id, summary: `تایید نوبت · ${b.customerName}`, at: new Date(Math.min(Date.parse(b.createdAt) + 25 * MINUTE, now - MINUTE)).toISOString() });
+      }
+    });
     tenants.push({ ...base, users });
   }
   const superAdmins = await buildUsers(null, [{ role: 'super_admin', name: 'GlitchLab Studio', mobile: '09106117886', pin: DEMO_PINS.super_admin }]);

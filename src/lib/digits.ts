@@ -32,3 +32,10 @@ export function parseNumber(value: string): number {
 export function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n);
 }
+
+/** 12_450_000 → «۱۲٫۵ میلیون», 850_000 → «۸۵۰ هزار» (for compact stats). */
+export function formatCompactToman(n: number): string {
+  if (n >= 1_000_000) return `${toFa((Math.round(n / 100_000) / 10).toString()).replace('.', '٫')} میلیون`;
+  if (n >= 1_000) return `${toFa(Math.round(n / 1000))} هزار`;
+  return toFa(n);
+}

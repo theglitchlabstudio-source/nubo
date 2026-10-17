@@ -211,7 +211,7 @@ export function Switch({
         <motion.span
           layout
           transition={{ type: 'spring', stiffness: 520, damping: 34 }}
-          className={cn('absolute top-1 size-5 rounded-full shadow-sm', checked ? 'start-6 bg-accent-ink' : 'start-1 bg-ink/70')}
+          className={cn('absolute top-1 size-5 rounded-full shadow-sm', checked ? 'start-6 bg-white' : 'start-1 bg-ink/70')}
         />
       </button>
     </label>
