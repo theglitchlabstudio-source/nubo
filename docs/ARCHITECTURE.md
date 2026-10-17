@@ -40,6 +40,8 @@ Answers to the Phase 1 questions. Where a decision changed something, the sectio
 | D10 | Hosting | **GitHub Pages** for the frontend demo. A VPS later for the backend and shared data (§9) |
 | D11 | Psychologist privacy | Nothing extra in the MVP; revisit later |
 | D12 | Holidays | **Official Iranian holidays are non-working by default**, and Friday is closed in templates. Owners can **override any holiday**: reopen it, or set special hours for that date (§3.2 `DateOverride`, §4.2) |
+| D13 | Plan prices | **Kept off the system** for now. The Hub shows plan and expiry, not prices (`subscription.priceToman` stays optional and hidden) |
+| D14 | Footer contact | "Powered by GlitchLab Studio" links to **+98 910 611 7886** (`tel:` link). It lives in one constant, `src/config/brand.ts`, so it's easy to change later |
 
 ---
 
@@ -664,6 +666,7 @@ booking-platform/
 │  └─ icons/                 PWA icons
 ├─ src/
 │  ├─ main.tsx               bootstrap: providers, router
+│  ├─ config/                brand.ts (Nubo, GlitchLab Studio, footer contact), env
 │  ├─ app/                   router, providers (Query, Data, Auth, Direction, Theme), layouts, guards
 │  ├─ features/              UI by app → screen. May import: ui, domain, data/hooks, services, lib
 │  │  ├─ landing/
@@ -997,10 +1000,7 @@ There's an interim option if you need real bookings before buying a VPS: PocketB
 
 All Phase 1 questions are answered (§0). Remaining:
 
-1. **GitHub repository:** this session can't create repositories. Please create an **empty public** repo named `nubo` under `theglitchlabstudio-source` (public is needed for free GitHub Pages; see §9.1), then I'll push this history and set up the Pages workflow in M0.
-2. **Plan prices:** do you want Basic / Pro prices shown in the Hub, or kept off-system for now?
-3. **Smart confirm rules:** are the default rules in §4.4 sensible for your first clients? Anything missing (e.g. "auto-confirm only during working hours of the secretary")?
-4. **Footer contact:** what should "Powered by GlitchLab Studio" link to: an Instagram page, a Telegram/WhatsApp number, or a page on the demo site?
+1. **Smart confirm rules:** are the default rules in §4.4 sensible for your first clients? Anything missing (e.g. "auto-confirm only during the secretary's working hours")? This can wait until M7.
 
 ### 10.3 Phase 3 build plan (small milestones)
 
