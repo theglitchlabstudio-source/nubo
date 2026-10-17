@@ -1,13 +1,14 @@
-# Architecture — Multi-tenant Appointment Booking Platform
+# Architecture — Nubo (نوبو)
 
-> Status: **Phase 1 (architecture) — draft for review.**
+> Multi-tenant appointment booking platform for Iranian small businesses, by **GlitchLab Studio**.
+> Status: **Phase 1 (architecture) — approved, with founder decisions applied (see §0).**
 > Code, identifiers and docs are in English; the product UI is Persian-first (RTL, Jalali, Persian digits).
-> Working product name in this doc: **"Nobat"** (نوبت). It's a placeholder; see Open Questions.
 
 ---
 
 ## Table of contents
 
+0. [Founder decisions](#0-founder-decisions)
 1. [Product overview, roles, permissions](#1-product-overview-roles-permissions)
 2. [Feature list: MVP / Pro / Later](#2-feature-list-mvp--pro--later)
 3. [Data model](#3-data-model)
@@ -18,6 +19,27 @@
 8. [Extension points](#8-extension-points)
 9. [Hosting and deployment](#9-hosting-and-deployment)
 10. [Risks, open questions, Phase 3 build plan](#10-risks-open-questions-phase-3-build-plan)
+
+---
+
+## 0. Founder decisions
+
+Answers to the Phase 1 questions. Where a decision changed something, the section it affects is linked.
+
+| # | Topic | Decision |
+|---|---|---|
+| D1 | Backend timing | Not decided yet; depends on talks with first clients. When needed, the backend goes on a **VPS** (PocketBase in Docker). The MVP stays a frontend-only demo (§9) |
+| D2 | Name and brand | Product: **Nubo (نوبو)**. Studio: **GlitchLab Studio**. No domain yet. **No upfront costs**: infrastructure is paid for from the first sales |
+| D3 | Confirmation | **Configurable per business**: manual approval, auto-confirm, or **smart (AI-assisted) auto-confirm** (§4.4) |
+| D4 | Customer cancel | Booking code + last 4 digits of mobile in the MVP. SMS verification later |
+| D5 | Plans | Basic / Pro split approved. The **"Powered by GlitchLab Studio" footer is shown on every plan**, Pro included. It can't be removed |
+| D6 | Business login (demo) | **4-digit PIN** per dashboard user |
+| D7 | Demo images | Free-license stock photos bundled in the repo, replaced with real images later (§7.4) |
+| D8 | Maps | **Several providers side by side** (Neshan, Balad, Google Maps), behind a small provider registry (§7.6) |
+| D9 | Templates | Exactly 7: barbershop, beauty salon, psychologist, dental clinic, general clinic, gym, private tutor |
+| D10 | Hosting | **GitHub Pages** for the frontend demo. A VPS later for the backend and shared data (§9) |
+| D11 | Psychologist privacy | Nothing extra in the MVP; revisit later |
+| D12 | Holidays | **Official Iranian holidays are non-working by default**, and Friday is closed in templates. Owners can **override any holiday**: reopen it, or set special hours for that date (§3.2 `DateOverride`, §4.2) |
 
 ---
 
@@ -112,7 +134,7 @@ Permissions live in code as a single `can(user, action, resource)` function in `
 | Service → staff → Jalali day → slot → name + mobile → request | MVP | |
 | Tracking page, cancel within window, `.ics` download | MVP | `.ics` is generated client-side |
 | Pending holds (configurable) | MVP | |
-| Mock login | MVP | Pick a demo user, or enter a PIN |
+| Mock login | MVP | 4-digit PIN per user (D6) |
 | Inbox: approve / reject with reason / propose time | MVP | |
 | Calendar: day / week / list; color by status / service / staff | MVP | Custom lightweight calendar (§10.3, M6) |
 | Manual booking, edit, reschedule, cancel, no-show, completed | MVP | |
@@ -134,14 +156,14 @@ Permissions live in code as a single `can(user, action, resource)` function in `
 
 | Feature | Tier | Why it sells in Iran |
 |---|---|---|
-| **Auto-confirm toggle** (skip approval for trusted / simple businesses) | MVP | Barbers often want instant booking. It's one setting |
+| **Confirmation modes**: manual / auto / smart (§4.4) | MVP (manual, auto) · Pro (smart) | Each business chooses how much control it keeps (D3) |
 | **"Notify customer" via phone apps**: buttons that open the secretary's SMS app, WhatsApp or Telegram with a ready Persian message (`sms:` / `https://wa.me/` / `tg://` deep links) | MVP | **Free and works today**, before any SMS provider exists. Big selling point |
 | **Split shifts** (e.g. 10–14 and 17–22) | MVP | Very common in Iranian shops. The data model supports multiple ranges per day |
-| **Official Iranian holidays one-click import** (bundled JSON for 1405–1406, solar + lunar) | MVP | Removes setup work on-site. Shows "تعطیل رسمی" on the calendar |
+| **Official Iranian holidays applied by default** (bundled dataset, solar + lunar), each one overridable by the owner | MVP | Removes setup work on-site. Shows "تعطیل رسمی" (official holiday) on the calendar (D12) |
 | **Export bookings / customers to Excel** (CSV with UTF-8 BOM, so Persian opens correctly in Excel) | MVP | Cheap to build, and owners ask for it |
 | **Data backup / restore (JSON)** per tenant | MVP | Needed for the mock → real backend migration anyway |
-| **Neshan / Balad / Google Maps links** | MVP | Iranians mostly use Neshan and Balad |
-| **"Powered by" footer** with your contact link on public pages (removable on Pro) | MVP | Free marketing to every customer of every client |
+| **Neshan / Balad / Google Maps buttons** + "open in any map app" (`geo:`) | MVP | Iranians mostly use Neshan and Balad (D8, §7.6) |
+| **"Powered by GlitchLab Studio" footer** with your contact link on every public page, **on all plans** | MVP | Free marketing to every customer of every client (D5) |
 | **Live demo trick**: request in one tab, it appears instantly in the admin inbox in another (BroadcastChannel) | MVP | Very convincing in a sales visit |
 | SMS reminders (day before, 2 h before) + confirmation SMS | Pro / Later | Kavenegar / Melipayamak / SMS.ir "verify/lookup" templates |
 | Telegram / Bale / Eitaa bot notifications to the business | Pro / Later | Bale and Eitaa work without VPN |
@@ -171,7 +193,7 @@ Permissions live in code as a single `can(user, action, resource)` function in `
 - Civil dates (holidays, "day off") are stored as Gregorian `"YYYY-MM-DD"` in tenant time. Jalali exists **only at the UI edge** (display and pickers).
 - Weekday numbering follows the Iranian week: `0 = Saturday … 6 = Friday`.
 - Money: **integer Toman** (`priceToman: number`). There's no float math. Display formatting is centralized (see Risks: currency redenomination).
-- Mobile numbers: stored normalized as `09xxxxxxxxx` (§4.6).
+- Mobile numbers: stored normalized as `09xxxxxxxxx` (§4.5).
 - Images: a `FileRef` (`{ id, url, width, height, mime }`) resolved by a `FileStorage` service (§6.4).
 - Every record has `createdAt` and `updatedAt`.
 
@@ -195,7 +217,7 @@ Permissions live in code as a single `can(user, action, resource)` function in `
 | bookingSettings | BookingSettings (embedded) | |
 | isDemo | boolean | Demo tenants get reset by "reset demo data" |
 
-**TenantProfile** (embedded): `tagline, description, address, city, mapLinks { neshan?, balad?, google? }, geo? {lat,lng}, phones[], socials { instagram?, telegram?, whatsapp?, bale?, eitaa?, website? }, bookingRulesText, footerText`.
+**TenantProfile** (embedded): `tagline, description, address, city, location { lat?, lng?, mapLinks: Partial<Record<MapProviderId, string>> } (see §7.6), phones[], socials { instagram?, telegram?, whatsapp?, bale?, eitaa?, website? }, bookingRulesText, footerText`.
 
 **BookingSettings** (embedded)
 | Field | Default | Meaning |
@@ -205,7 +227,8 @@ Permissions live in code as a single `can(user, action, resource)` function in `
 | minNoticeMin | 120 | Can't book a slot starting sooner than now + this |
 | maxAdvanceDays | 30 | How far ahead customers can book |
 | maxBookingsPerDay | null | Per staff. Null = unlimited |
-| autoConfirm | false | Online requests go straight to `confirmed` |
+| confirmationMode | `manual` | `manual` (secretary approves) · `auto` (straight to `confirmed`) · `smart` (policy decides per request, Pro). See §4.4 |
+| smartRules | defaults | Settings for `smart` mode: e.g. `requireKnownCustomer`, `maxNoShows`, `blockFirstVisit`, `minHoursAhead`. See §4.4 |
 | holdPendingSlots | true | Pending requests block the slot for others |
 | pendingExpiryHours | 24 | Unanswered pending requests expire (and free the slot) after this |
 | cancellationWindowHours | 12 | Customer can cancel until start − this |
@@ -214,7 +237,9 @@ Permissions live in code as a single `can(user, action, resource)` function in `
 
 **Plan** (static config in code for MVP, a collection later): `id, name, features: FeatureKey[], limits { maxStaff, maxServices, maxGalleryImages }`.
 
-`FeatureKey = 'multiStaff' | 'gallery' | 'chatbot' | 'sms' | 'messengerBots' | 'customDomain' | 'removeBranding' | 'advancedStats' | 'exportData'`
+`FeatureKey = 'multiStaff' | 'gallery' | 'chatbot' | 'sms' | 'messengerBots' | 'customDomain' | 'smartConfirm' | 'advancedStats' | 'exportData'`
+
+> There's deliberately **no** feature to remove the "Powered by GlitchLab Studio" footer (D5).
 
 Effective features = `plan.features` ⊕ `tenant.featureOverrides`, computed by a single `getFeatures(tenant)` function.
 
@@ -232,7 +257,13 @@ Effective features = `plan.features` ⊕ `tenant.featureOverrides`, computed by 
 **WorkingHours**: `id, tenantId, staffId (null = business default), weekday (0–6), ranges: { start: "HH:mm", end: "HH:mm" }[]`.
 > **Breaks are gaps between ranges.** `10:00–13:00, 14:00–20:00` means a 13–14 break. The UI shows an "add break" button that splits a range. An empty `ranges` means closed. A staff member with no rows inherits the business default.
 
-**TimeOff** (blocks, leave, closures, holidays): `id, tenantId, staffId (null = whole business), kind ('holiday'|'closure'|'leave'|'block'), start, end (UTC instants; an all-day item spans local 00:00 → 24:00), allDay, reason?, source ('manual'|'official_holiday')`.
+**TimeOff** (blocks, leave, closures, holidays): `id, tenantId, staffId (null = whole business), kind ('holiday'|'closure'|'leave'|'block'), start, end (UTC instants; an all-day item spans local 00:00 → 24:00), allDay, reason?, source ('manual'|'official_holiday'), officialHolidayKey?, disabled: boolean`.
+> **Official holidays are copied into each tenant as `TimeOff` rows** (`source = 'official_holiday'`) when the tenant is created, and again when a new year's dataset ships. The owner **overrides** one by setting `disabled = true` ("we're open that day"). We keep the row instead of deleting it, so the next dataset sync doesn't add it back.
+
+**DateOverride** (special hours for one date): `id, tenantId, staffId (null = business), date: CivilDate, ranges: { start, end }[], note?`.
+> Replaces the weekly `WorkingHours` for that date only. Typical uses: "open 10–14 on this holiday", "close early on the last Wednesday of the year". An empty `ranges` means closed that date.
+
+**OfficialHoliday** (global, bundled dataset, read-only): `key, date: CivilDate, jalaliLabel, titleFa, kind ('solar'|'lunar')`. Shipped as `seed/holidays/1405.json`, `1406.json`.
 
 **Customer**: `id, tenantId, name, mobile (unique per tenant), notes, tags[], stats { bookings, completed, noShows, cancelled, lastVisitAt } (denormalized, recomputed on booking change), blocked: boolean`.
 > Customers are created or matched automatically by `(tenantId, mobile)` when a booking is submitted.
@@ -282,6 +313,9 @@ erDiagram
     TENANT ||--o{ WORKING_HOURS : "default hours"
     STAFF ||--o{ WORKING_HOURS : "own hours"
     TENANT ||--o{ TIME_OFF : "closures/holidays"
+    TENANT ||--o{ DATE_OVERRIDE : "special hours"
+    STAFF ||--o{ DATE_OVERRIDE : "special hours"
+    OFFICIAL_HOLIDAY ||--o{ TIME_OFF : "copied as"
     STAFF ||--o{ TIME_OFF : "leave/blocks"
     TENANT ||--o{ CUSTOMER : has
     CUSTOMER ||--o{ BOOKING : makes
@@ -400,8 +434,8 @@ erDiagram
 
 ```mermaid
 stateDiagram-v2
-    [*] --> pending: customer submits (autoConfirm = false)
-    [*] --> confirmed: auto-confirmed submit or admin creates manually
+    [*] --> pending: submit, mode manual (or smart says review)
+    [*] --> confirmed: submit, mode auto (or smart says approve), or admin creates
 
     pending --> confirmed: business approves
     pending --> rejected: business rejects (reason)
@@ -462,8 +496,9 @@ interface Slot { start: Instant; end: Instant; staffIds: string[] } // staff fre
 **Steps (per candidate staff member)**
 
 1. **Pick staff.** If `staffId = 'any'`, use all active staff in `service.staffIds`. Otherwise use only that one.
-2. **Day-level rejects.** Skip if the date is before today (tenant tz) or after `today + maxAdvanceDays`, if a business-wide all-day `holiday`/`closure` covers it, or if the staff member has an all-day `leave`.
-3. **Open intervals.** Take the staff's `WorkingHours` for that weekday, falling back to the business default. Convert each `"HH:mm"` range to UTC instants using the tenant timezone **for that specific date**. Never add a fixed +3:30 offset, so we stay correct if DST ever returns.
+2. **Day-level rejects.** Skip if the date is before today (tenant tz) or after `today + maxAdvanceDays`, if a business-wide all-day `holiday`/`closure` covers it (ignoring rows with `disabled = true`), or if the staff member has an all-day `leave`.
+   *Exception:* a `DateOverride` for that date wins over a holiday. Setting special hours on a holiday means "we're open".
+3. **Open intervals.** Use, in priority order: the staff's `DateOverride` for that date, the business `DateOverride`, the staff's `WorkingHours` for that weekday, then the business default. Convert each `"HH:mm"` range to UTC instants using the tenant timezone **for that specific date**. Never add a fixed +3:30 offset, so we stay correct if DST ever returns.
 4. **Subtract unavailability.** Remove business-wide and staff-specific `TimeOff` intervals.
 5. **Subtract busy time.** For each **blocking** booking of that staff member (§4.1), subtract `[b.start, b.end + b.bufferAfterMin)`. **The buffer belongs to the earlier appointment.**
 6. **Daily cap.** If `maxBookingsPerDay` is set and the staff member already has that many blocking bookings that day, there are no slots.
@@ -516,7 +551,40 @@ sequenceDiagram
     end
 ```
 
-### 4.4 Persian input normalization (part of the domain layer)
+### 4.4 Confirmation modes and smart auto-confirm
+
+Each business picks a `confirmationMode` (D3). The decision happens in **one place**, a pure function behind an interface, called by `createRequest` after the slot check passes:
+
+```ts
+interface ConfirmationPolicy {
+  decide(i: { booking: BookingDraft; customer: Customer | null; tenant: Tenant; history: CustomerHistory; now: Instant })
+    : Promise<{ decision: 'approve' | 'review'; reasons: string[] }>;   // reasons are shown to the secretary
+}
+```
+
+| Mode | Policy | Tier |
+|---|---|---|
+| `manual` | Always `review` → `pending`, lands in the inbox | MVP |
+| `auto` | Always `approve` → `confirmed` | MVP |
+| `smart` | `RulesConfirmationPolicy` now; `AiConfirmationPolicy` later | Pro (`smartConfirm`) |
+
+**Smart mode, MVP (rules, deterministic):** approve only when all enabled rules pass, otherwise send it to review with the reasons. Example rules:
+- customer is known (≥ 1 completed booking) — or first visits are allowed;
+- customer's no-shows ≤ `maxNoShows` and the customer isn't blocked;
+- slot is at least `minHoursAhead` away;
+- the service is one the owner marked "safe to auto-confirm";
+- the customer doesn't already have another active booking that day.
+
+The secretary sees *why* a request was or wasn't auto-confirmed (e.g. "first visit → needs review"), and every automatic decision is audit-logged with `actor = system`.
+
+**Smart mode, Later (AI-assisted):** an `AiConfirmationPolicy` uses the same interface. It gets the rule results plus aggregated history (no-show patterns, typical booking times, how the secretary handled similar requests) and returns `approve` / `review` with a Persian explanation. Guardrails:
+- it can only **approve or escalate, never reject**; a human always makes rejections;
+- the hard rules (slot free, within hours, customer not blocked) are checked first and can't be overridden;
+- if the AI provider fails, it falls back to the rules policy.
+
+That way "AI-assisted" is safe to sell: the worst case is that a request goes to the inbox as it would anyway.
+
+### 4.5 Persian input normalization (part of the domain layer)
 
 - **Digits:** every input accepts Persian (`۰–۹`), Arabic (`٠–٩`) and Latin digits, and normalizes them to Latin before validation and storage. Display converts to Persian digits with `toFaDigits()` / `Intl.NumberFormat('fa-IR')`.
 - **Characters:** normalize Arabic `ي`/`ك` to Persian `ی`/`ک` in names and search, so customer search works.
@@ -537,7 +605,7 @@ Mobile-first everywhere. The dashboard uses a **bottom tab bar** on phones and a
 | `/b/:slug` | Business page | Cover, logo, name, tagline, description, gallery, services with prices, staff, working hours (Jalali weekday names, today highlighted), address + map buttons, socials, booking rules, a sticky "رزرو نوبت" (book) button. Suspended tenant: friendly "temporarily unavailable" page |
 | `/b/:slug/book` | Booking wizard | Steps: ① service ② staff (skipped if 1 staff or `allowStaffChoice = false`; has an "any" option) ③ Jalali calendar with available days ④ slot grid grouped as morning / afternoon / evening ⑤ name, mobile, note + rules ⑥ review & submit. State lives in the URL query, so back/forward and refresh work |
 | `/b/:slug/booking/:code` | Tracking page | Status badge and timeline, details, **cancel** (inside window, confirms with last 4 mobile digits), **accept / decline proposal**, add to calendar (.ics), tap-to-call the business, "book again" |
-| `/b/:slug/admin/login` | Business login | Mock: choose owner / secretary demo user, or a PIN |
+| `/b/:slug/admin/login` | Business login | Choose your name, then enter a **4-digit PIN** (mock). Demo PINs are shown on the landing page |
 
 ### 5.2 Business dashboard (`/b/:slug/admin/...`)
 
@@ -552,8 +620,8 @@ Mobile-first everywhere. The dashboard uses a **bottom tab bar** on phones and a
 | `/customers/:id` | Customer detail | Booking history, notes, tap-to-call, new booking for this customer, block |
 | `/services` | Services | List + editor (name, duration, buffer, price type, image, staff, active, order) |
 | `/staff` | Staff | List + editor (photo, title, color, services, own hours, leave). Single-staff UX on Basic |
-| `/availability` | Availability | Weekly hours grid (business + per staff), break splitting, holidays and closures (with official holidays import), one-off blocks |
-| `/settings/booking` | Booking rules | Slot interval, notice, max advance, max per day, auto-confirm, pending hold + expiry, cancellation window, rules text |
+| `/availability` | Availability | Weekly hours grid (business + per staff), break splitting, **holidays list** (official holidays on by default; toggle "open this day" or set special hours), date overrides, closures, one-off blocks |
+| `/settings/booking` | Booking rules | Slot interval, notice, max advance, max per day, confirmation mode (manual / auto / smart + rules), pending hold + expiry, cancellation window, rules text |
 | `/settings/branding` | Branding | Preset picker, primary/accent colors, light/dark, radius, logo / cover / gallery upload (auto-compressed), texts, socials. **Live preview** of the public page |
 | `/settings/users` | Users | Owner adds or removes secretaries (mock) |
 | `/share` | Share tools | Copy link, QR (PNG/SVG download, print-ready card with logo), Instagram bio link tips, WhatsApp/Telegram share |
@@ -622,7 +690,7 @@ booking-platform/
 │  │  └─ index.ts            createDataAdapter(env)
 │  ├─ services/              extension points: interface + mock implementation each
 │  │  ├─ auth/  notifications/  files/  payments/  chatbot/  events/
-│  ├─ seed/                  demo tenants, templates, theme presets, Iranian holidays JSON
+│  ├─ seed/                  demo tenants, templates, theme presets, holidays/ (1405.json, 1406.json)
 │  ├─ theme/                 token derivation (culori), ThemeScope, presets types
 │  ├─ lib/                   time (tz + jalali), digits, phone, money, persian text normalization, csv
 │  ├─ i18n/                  fa.ts string dictionary (Persian only now; structure allows en later)
@@ -745,13 +813,33 @@ A global library of about 10 presets in `seed/themePresets.ts`, editable in the 
 - Uploads are **resized and compressed in the browser** (canvas → WebP; logo max 512 px, cover 1600 px, gallery 1200 px, staff photo 400 px). They're stored via `FileStorage`. The mock saves Blobs in IndexedDB.
 - If there's no logo, we generate a monogram avatar (the business's first Persian letter on the primary color).
 - Covers have a dark gradient overlay so text on top stays readable whatever the image.
-- Demo images are bundled in `/public/demo` (royalty-free images or illustrations; see Open Questions).
+- Demo images are **free-license stock photos** (Unsplash / Pexels licenses allow commercial use without attribution), resized and bundled in `/public/demo`. Every file's source and license is recorded in `public/demo/CREDITS.md`, so they're easy to replace with real client photos later (D7).
 
 ### 7.5 Known white-label limits of a static SPA (resolved in Phase 4)
 
 - **Link previews** (Telegram / WhatsApp / Instagram) can't show per-business title and image without a server, because crawlers don't run JS. They'll show the generic app preview. Fix: a server renders `<meta og:*>` per slug.
 - **"Add to home screen" per business:** the PWA manifest is per-app, so the installed icon is the platform's. Fix: a server-generated per-tenant manifest.
 - **Custom domains**: need the server or reverse proxy.
+
+---
+
+### 7.6 Map providers (D8)
+
+Maps are **links, not embedded maps**. Embedded map SDKs need API keys, add weight, and some are blocked in Iran. Each provider is a small entry in a registry:
+
+```ts
+type MapProviderId = 'neshan' | 'balad' | 'google';
+interface MapProvider {
+  id: MapProviderId; labelFa: string; icon: string;
+  linkFor(loc: { lat: number; lng: number }): string;   // build a link from coordinates
+  parseLink?(url: string): { lat: number; lng: number } | null;  // let the owner paste a share link
+}
+```
+
+- The owner can either **paste share links** from each app (stored as-is in `location.mapLinks`), or **set a pin once** (lat/lng). The registry then builds a link for every provider.
+- The public page shows one button per available provider, plus **"open in another map app"** (`geo:lat,lng`), which on Android lets the customer pick any installed app.
+- Adding another provider later (e.g. Waze) is one registry entry. Exact URL formats for each app are verified during Phase 3, because they change without notice.
+- The `/hub` and admin forms only need lat/lng or links, never an API key.
 
 ---
 
@@ -793,7 +881,7 @@ interface AuthProvider {
 }
 ```
 
-- **MVP:** `MockAuthProvider`. The session lives in `sessionStorage`. Login screens list the demo users. The OTP flow is simulated: the code is shown on screen, which is fine for the demo.
+- **MVP:** `MockAuthProvider`. The session lives in `sessionStorage`. Login is name + 4-digit PIN (PINs are hashed in the mock DB; demo PINs are listed on the landing page). The OTP flow is simulated: the code is shown on screen, which is fine for the demo.
 - **Phase 4:** PocketBase auth collection `users` with a custom SMS-OTP route (PocketBase's built-in OTP is email-based; we add a hook that sends the code via the SMS channel). Customer OTP is optional later, to confirm a booking's mobile number and cut fake bookings.
 
 ### 8.3 Payments (Later)
@@ -845,8 +933,11 @@ Mock: IndexedDB Blob → object URL. Phase 4: PocketBase files (served from your
 ### 9.1 Now (free)
 
 - `npm run build` produces a static `dist/`. There's no server.
-- **Primary:** **GitHub Pages** via a GitHub Actions workflow (free, automatic on push to `main`). Add a `404.html` copy of `index.html` for SPA routes.
-- **Mirror / alternative:** **Cloudflare Pages** (free, `_redirects` for SPA fallback, faster globally). Both get deployed from the same build, so if one domain is slow or filtered in Iran, you open the other on your phone.
+- **Host: GitHub Pages** (D10), deployed by a GitHub Actions workflow on every push to `main`. Cost: zero.
+  - URL: `https://<github-user>.github.io/nubo/`, so Vite's `base` is set to `/nubo/` and the router uses the same basename. Moving to a custom domain later means changing one env variable.
+  - SPA routes: the build copies `index.html` to `404.html`, so deep links like `/nubo/b/barber-arash/booking/AB3K7Q2M` work.
+  - **GitHub Pages on a free account needs a public repository.** The code is then visible to anyone, but there are no secrets in a frontend demo. If you want the code private, the alternatives are a paid GitHub plan, or deploying the built files from the private repo to a separate public "site" repo.
+- *Fallback if github.io is slow or filtered in Iran:* the same `dist/` can be dropped on Cloudflare Pages, or any static host, in minutes. Nothing in the app depends on GitHub.
 - Fonts, icons and images are **all bundled**. There are no runtime requests to any third-party domain, so the app works even when foreign CDNs are blocked.
 - The PWA service worker caches the app shell. After the first visit, the demo opens even on bad mobile data, which helps during sales visits.
 
@@ -889,7 +980,7 @@ There's an interim option if you need real bookings before buying a VPS: PocketB
 | # | Risk | Impact | Mitigation |
 |---|---|---|---|
 | 1 | **Mock data is per-browser.** Clients may think the demo is the real product | High | Label the demo clearly. Plan Phase 4 (PocketBase) right after the MVP. Keep the adapter contract strict so the swap is days, not weeks |
-| 2 | Foreign hosting (github.io / pages.dev) slow or filtered in Iran | Medium | Two mirrors, bundled assets, PWA cache. Final home is an Iranian VPS |
+| 2 | github.io slow or filtered in Iran | Medium | Bundled assets, PWA cache (works offline after first visit), static build portable to any host. Final home is an Iranian VPS |
 | 3 | Sensitive data (psychology, medical notes) | High once real | Minimal data collection. No diagnoses in notes for MVP. Staff-only notes. Server hosted inside Iran. HTTPS. Later: per-role note visibility and audit |
 | 4 | Double booking / race conditions | Medium | Transactional re-check now. Server-side hook + constraint later. Contract tests include a race test |
 | 5 | **Currency redenomination** (official move from rial to "new toman" with zeros removed) | Low–Medium | Integer Toman + a single `formatToman()`. A display unit switch is a one-line change |
@@ -899,21 +990,17 @@ There's an interim option if you need real bookings before buying a VPS: PocketB
 | 9 | Scope creep before first sale | High | MVP list in §2 is the line. Everything else is Later |
 | 10 | Maintainability by a non-expert | Medium | Strict folders, pure domain with tests, one adapter contract, short comments in non-obvious logic, CLAUDE.md with project rules (Phase 3, M0) |
 | 11 | Older / low-end Android devices | Medium | Small bundle (route-level code splitting), no heavy calendar library, test on a throttled profile |
+| 12 | **Lunar holidays shift every year** and are officially announced in advance | Medium | Bundled dataset per Jalali year (1405, 1406), checked against the official calendar. Yearly update is a small JSON PR. Owners can always override |
+| 13 | Smart auto-confirm approves a bad request | Low | Hard rules first, approve-or-escalate only (never auto-reject), reasons shown, audit log, per-business opt-in |
 
-### 10.2 Open questions for you
+### 10.2 Open questions
 
-1. **Real usage timing:** do you want to sell only demos at first, or must the first paying client actually take bookings within days? If the latter, I'd move a minimal PocketBase adapter right after the MVP. Where would PocketBase run (your existing Docker server? a VPS?)
-2. **Product name / brand** for the Hub, landing and "powered by" footer? Do you have a domain?
-3. **Approval default:** should new tenants default to *manual approval* (as the brief describes) or *auto-confirm*? I suggest per-template defaults (barbers auto, clinics manual).
-4. **Customer cancel verification:** is "booking code + last 4 digits of mobile" enough for the MVP? (Real OTP comes in Phase 4.)
-5. **Basic vs Pro**: does my split look right (Basic = 1 staff, no gallery, no chatbot/SMS; Pro = multi-staff, gallery, SMS/bots, chatbot, remove branding)? Any prices to show in the Hub?
-6. **Business login in the MVP**: pick from demo users (fastest for demos) or a 4-digit PIN per user (feels more real)? I plan to support both.
-7. **Demo images:** may I use royalty-free stock photos bundled in the repo, or would you rather use illustrations/placeholders until you send real ones?
-8. **Map links:** Neshan + Balad + Google, or a subset?
-9. **Which business types** should get templates in the MVP? I propose barbershop, beauty salon, psychologist, dental, general clinic, gym, tutor.
-10. **Hosting:** do you have a GitHub account/repo to push to? (This session's repo is local only right now.) GitHub Pages, Cloudflare Pages, or both?
-11. **Psychologists:** do they need extra privacy now (e.g. customer page shows no staff names), or is that Later?
-12. **Week view start**: Saturday-first (standard Iranian). Thursday and Friday shown as "weekend-ish"? Is Friday closed by default in templates?
+All Phase 1 questions are answered (§0). Remaining:
+
+1. **GitHub repository:** this session can't create repositories. Please create an **empty public** repo named `nubo` under `theglitchlabstudio-source` (public is needed for free GitHub Pages; see §9.1), then I'll push this history and set up the Pages workflow in M0.
+2. **Plan prices:** do you want Basic / Pro prices shown in the Hub, or kept off-system for now?
+3. **Smart confirm rules:** are the default rules in §4.4 sensible for your first clients? Anything missing (e.g. "auto-confirm only during working hours of the secretary")?
+4. **Footer contact:** what should "Powered by GlitchLab Studio" link to: an Instagram page, a Telegram/WhatsApp number, or a page on the demo site?
 
 ### 10.3 Phase 3 build plan (small milestones)
 
@@ -923,12 +1010,12 @@ Each milestone ends with something clickable and a commit. Rough effort for AI-a
 |---|---|---|---|
 | M0 | **Scaffold** | Vite + React + TS + Tailwind v4 + shadcn, RTL (`dir="rtl"`, DirectionProvider), Vazirmatn bundled, ESLint boundaries, Vitest, folder skeleton, CLAUDE.md, PWA plugin, GitHub Pages workflow | 0.5 day |
 | M1 | **Domain core** | Types + zod schemas, `lib/` (digits, phone, money, time + Jalali), interval math, **slot engine with thorough tests**, booking state machine + tests | 1 day |
-| M2 | **Mock data layer** | `ports.ts`, Dexie DB, all repositories, BroadcastChannel realtime, contract test suite, **seed: 3 demo tenants** + templates + presets + holidays, reset demo | 1 day |
+| M2 | **Mock data layer** | `ports.ts`, Dexie DB, all repositories, BroadcastChannel realtime, contract test suite, **seed: 3 demo tenants** + 7 templates + presets + holidays (1405–1406) auto-applied, reset demo | 1 day |
 | M3 | **Design system + theming** | Tokens from DESIGN.md (Phase 2), ThemeScope, core UI pieces: JalaliCalendar, SlotGrid, PhoneInput, PriceText, StatusBadge, BottomNav, layouts | 1 day |
 | M4 | **Public app** | Business page, booking wizard, tracking page (cancel, proposal accept/decline, .ics) | 1–1.5 days |
 | M5 | **Dashboard I: requests** | Mock login, Today + Inbox (approve / reject / propose), booking detail with status actions + notify deep links, impersonation banner | 1 day |
 | M6 | **Dashboard II: calendar & bookings** | Day / week / list calendar (custom, lightweight), manual booking, reschedule, customers list + detail | 1.5 days |
-| M7 | **Dashboard III: setup** | Services, staff, availability (hours, breaks, holidays import, blocks), booking rules | 1 day |
+| M7 | **Dashboard III: setup** | Services, staff, availability (hours, breaks, holiday overrides, date overrides, blocks), booking rules incl. confirmation modes + smart rules | 1 day |
 | M8 | **Dashboard IV: brand & share** | Branding editor with live preview + image compression, share tools (link, QR, print card), stats, outbox, chatbot placeholder, CSV export | 1 day |
 | M9 | **Hub** | Overview, tenants list/detail, feature flags, subscription, new-tenant-from-template wizard, templates, themes, audit, reset/export/import | 1–1.5 days |
 | M10 | **Polish & demo-ready** | Empty / loading / error states, Persian copy review, a11y pass, Playwright smoke tests (book → approve → track), Lighthouse / perf on mobile, deploy to both hosts, "demo script" doc for sales visits | 1 day |

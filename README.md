@@ -1,4 +1,4 @@
-# Booking Platform (Nobat — working name)
+# Nubo (نوبو) — by GlitchLab Studio
 
 Multi-tenant, Persian-first appointment booking platform for Iranian small businesses.
 
